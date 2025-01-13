@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Event Details</title>
+</head>
+<body>
+<h1>Attendee Event Page</h1>
+<% if (event) { %>
+    <h2><%= event.title %></h2>
+    <p><%= event.description %></p>
+    <p>Date: <%= event.event_date %></p>
+    <p>Full Price Tickets Available: <%= event.full_price_count %></p>
+    <p>Concession Tickets Available: <%= event.concession_count %></p>
+
+    <form action="/attendee/event/<%= event.id %>/book" method="POST">
+        <label>Your Name:</label>
+        <input type="text" name="attendee_name" required /><br/>
+
+        <label>Full Price Tickets (max <%= event.full_price_count %>):</label>
+        <input type="number" name="full_price_count" min="0" max="<%= event.full_price_count %>" /><br/>
+
+        <label>Concession Tickets (max <%= event.concession_count %>):</label>
+        <input type="number" name="concession_count" min="0" max="<%= event.concession_count %>" /><br/>
+
+        <button type="submit">Book</button>
+    </form>
+<% } else { %>
+    <p>Event not found.</p>
+<% } %>
+<a href="/attendee">Back</a>
+</body>
+</html>

@@ -1,89 +1,91 @@
 // routes/attendee.js
-// Purpose: Handling the attendee home, event pages, bookings, etc.
-
 const express = require("express");
 const router = express.Router();
-const db = require("../core/db"); // or ../path/to/db.js
-
-router.get("/", (req, res) => {
-    db.get("SELECT * FROM siteSettings LIMIT 1", (err, row) => {
-        if (err) {
-            return res.status(500).send(err.message);
-        }
-        res.send(row);
-    });
-});
+const db = require("../core/db");
 
 // GET /attendee
-// Show the attendee homepage with a list of published events
+// Show list of published events
 router.get("/", (req, res) => {
     db.get("SELECT * FROM siteSettings LIMIT 1", (err, siteSettings) => {
-        if (err) { /* handle error */ }
-        const sql = `
-      SELECT * FROM events
-      WHERE status='published'
-      ORDER BY event_date ASC
-    `;
-        db.all(sql, (err, publishedEvents) => {
-            if (err) { /* handle error */ }
-            res.render("attendee/attendeeHome", { siteSettings, publishedEvents });
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
+        }
+        const sql = `SELECT * FROM events WHERE status='published' ORDER BY event_date ASC`;
+        db.all(sql, (err2, publishedEvents) => {
+            if (err2) {
+                console.error(err2);
+                return res.status(500).send("Database error");
+            }
+            res.render("attendee/home", { siteSettings, publishedEvents });
         });
     });
 });
 
-
 // GET /attendee/event/:id
-// Show details for one event with booking form
+// Show single event detail
 router.get("/event/:id", (req, res) => {
     const eventId = req.params.id;
-    db.get("SELECT * FROM events WHERE id=? AND status='published'", eventId, (err, event) => {
-        if (err) { /* handle error */ }
-        if (!event) {
-            return res.send("Event not found or not published.");
+
+    db.get("SELECT * FROM events WHERE id=? AND status='published'", [eventId], (err, event) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
         }
-        res.render("attendee/attendeeEvent", { event });
+        if (!event) {
+            return res.status(404).send("Event not found or not published");
+        }
+        res.render("attendee/singleEvent", { event });
     });
 });
 
-
 // POST /attendee/event/:id/book
-// Handle booking creation
+// Book tickets
 router.post("/event/:id/book", (req, res) => {
     const eventId = req.params.id;
     const { attendee_name, full_price_count, concession_count } = req.body;
     const now = new Date().toISOString();
 
-    // 1) check current event ticket availability
-    db.get("SELECT * FROM events WHERE id=? AND status='published'", eventId, (err, event) => {
-        if (err || !event) {
-            return res.send("Error or event not found");
+    db.get("SELECT * FROM events WHERE id=? AND status='published'", [eventId], (err, event) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
+        }
+        if (!event) {
+            return res.status(404).send("Event not found or not published");
         }
 
-        const requestedFull = parseInt(full_price_count) || 0;
-        const requestedConc = parseInt(concession_count) || 0;
+        // Convert to integer or 0 if blank
+        const fpRequested = parseInt(full_price_count) || 0;
+        const cRequested = parseInt(concession_count) || 0;
 
-        if (requestedFull > event.full_price_tix_count || requestedConc > event.concession_tix_count) {
-            return res.send("Not enough tickets available");
+        // Check availability
+        if (fpRequested > event.full_price_count || cRequested > event.concession_count) {
+            return res.status(400).send("Not enough tickets available");
         }
 
-        // 2) create booking
-        const insertBookingSql = `
-      INSERT INTO bookings (event_id, attendee_name, full_price_tix_booked, concession_tix_booked, created_at)
+        // Insert booking
+        const bookingSql = `
+      INSERT INTO bookings (event_id, attendee_name, full_price_booked, concession_booked, created_at)
       VALUES (?, ?, ?, ?, ?)
     `;
-        db.run(insertBookingSql, [eventId, attendee_name, requestedFull, requestedConc, now], function(err2) {
-            if (err2) return res.send("Error booking tickets");
+        db.run(bookingSql, [event.id, attendee_name, fpRequested, cRequested, now], function (err2) {
+            if (err2) {
+                console.error(err2);
+                return res.status(500).send("Error creating booking");
+            }
 
-            // 3) decrement event tickets
-            const updateEventSql = `
+            // Decrement from events table
+            const updateSql = `
         UPDATE events
-           SET full_price_tix_count=full_price_tix_count-?,
-               concession_tix_count=concession_tix_count-?
-         WHERE id=?
+          SET full_price_count=full_price_count-?,
+              concession_count=concession_count-?
+          WHERE id=?
       `;
-            db.run(updateEventSql, [requestedFull, requestedConc, eventId], function(err3) {
+            db.run(updateSql, [fpRequested, cRequested, event.id], (err3) => {
                 if (err3) {
-                    return res.send("Error updating tickets");
+                    console.error(err3);
+                    return res.status(500).send("Error updating ticket counts");
                 }
                 // success
                 res.redirect("/attendee");
@@ -91,6 +93,5 @@ router.post("/event/:id/book", (req, res) => {
         });
     });
 });
-
 
 module.exports = router;

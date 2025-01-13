@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Event</title>
+</head>
+<body>
+<h1>Organiser Edit Event Page</h1>
+<% if (event) { %>
+    <p>Created at: <%= event.created_at %></p>
+    <form action="/organiser/edit/<%= event.id %>" method="POST">
+        <label>Title:</label>
+        <input type="text" name="title" value="<%= event.title %>" required /><br/>
+
+        <label>Description:</label>
+        <textarea name="description" required><%= event.description %></textarea><br/>
+
+        <label>Full Price Tickets (count):</label>
+        <input type="number" name="full_price_count" value="<%= event.full_price_count %>" /><br/>
+
+        <label>Full Price Tickets (price):</label>
+        <input type="number" name="full_price_price" step="0.01" value="<%= event.full_price_price %>" /><br/>
+
+        <label>Concession Tickets (count):</label>
+        <input type="number" name="concession_count" value="<%= event.concession_count %>" /><br/>
+
+        <label>Concession Tickets (price):</label>
+        <input type="number" name="concession_price" step="0.01" value="<%= event.concession_price %>" /><br/>
+
+        <label>Event Date:</label>
+        <input type="date" name="event_date" value="<%= event.event_date ? event.event_date.split('T')[0] : '' %>" /><br/>
+
+        <button type="submit">Save Changes</button>
+    </form>
+<% } else { %>
+    <p>Event not found.</p>
+<% } %>
+<p><a href="/organiser">Back</a></p>
+</body>
+</html>

@@ -1,183 +1,195 @@
 // routes/organiser.js
-// Purpose: Handling all organiser pages (home, settings, edit event, etc.)
-
 const express = require("express");
 const router = express.Router();
-const db = require("../core/db"); // or ../path/to/db.js
-
-router.get("/", (req, res) => {
-    db.get("SELECT * FROM siteSettings LIMIT 1", (err, row) => {
-        if (err) {
-            return res.status(500).send(err.message);
-        }
-        res.send(row);
-    });
-});
-
-module.exports = router;
+const db = require("../core/db");  // important: import from db.js
 
 // GET /organiser
-// Show the organiser home page with lists of draft/published events
+// Show organiser home page with site settings, published events, draft events
 router.get("/", (req, res) => {
-    // 1) Get site settings
+    // Step 1: get site settings
     db.get("SELECT * FROM siteSettings LIMIT 1", (err, siteSettings) => {
-        if (err) { /* handle error */ }
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
+        }
 
-        // 2) Get published events
-        db.all("SELECT * FROM events WHERE status = 'published'", (err, publishedEvents) => {
-            if (err) { /* handle error */ }
+        // Step 2: get published events
+        db.all("SELECT * FROM events WHERE status='published'", (err2, published) => {
+            if (err2) {
+                console.error(err2);
+                return res.status(500).send("Database error");
+            }
 
-            // 3) Get draft events
-            db.all("SELECT * FROM events WHERE status = 'draft'", (err, draftEvents) => {
-                if (err) { /* handle error */ }
+            // Step 3: get draft events
+            db.all("SELECT * FROM events WHERE status='draft'", (err3, draft) => {
+                if (err3) {
+                    console.error(err3);
+                    return res.status(500).send("Database error");
+                }
 
-                res.render("organiser/organiserHome", {
+                // Render organiserHome (views/organiser/home.ejs)
+                res.render("organiser/home", {
                     siteSettings,
-                    publishedEvents,
-                    draftEvents
+                    publishedEvents: published,
+                    draftEvents: draft
                 });
             });
         });
     });
 });
 
-
-// POST /organiser/create-event
-// Creates a new draft event, then redirects to the edit page
-router.post("/create-event", (req, res) => {
+// POST /organiser/create
+// Create a new event as draft
+router.post("/create", (req, res) => {
     const now = new Date().toISOString();
-    const sql = `
-    INSERT INTO events (title, description, full_price_tix_count, full_price_tix_price, 
-                        concession_tix_count, concession_tix_price, created_at, modified_at, event_date, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-    db.run(
-        sql,
-        [
-            "Untitled",            // default
-            "No description",      // default
-            0,                     // default
-            0.0,                   // default
-            0,                     // default
-            0.0,                   // default
-            now,
-            now,
-            "2025-01-01",         // or some default
-            "draft"
-        ],
-        function (err) {
-            if (err) {
-                console.error(err);
-                return res.redirect("/organiser");
-            }
-            // The newly created row ID is available via 'this.lastID'
-            res.redirect(`/organiser/edit/${this.lastID}`);
+    const sql = `
+    INSERT INTO events
+      (title, description, full_price_count, full_price_price,
+       concession_count, concession_price, created_at, modified_at, event_date, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+    db.run(sql, [
+        "New Event",
+        "No description",
+        0,     // full_price_count
+        0.0,   // full_price_price
+        0,     // concession_count
+        0.0,   // concession_price
+        now,
+        now,
+        "2025-01-01",  // default event date
+        "draft"
+    ], function (err) {
+        if (err) {
+            console.error(err);
+            return res.redirect("/organiser");
         }
-    );
+        res.redirect(`/organiser/edit/${this.lastID}`);
+    });
 });
 
-
 // GET /organiser/edit/:id
-// Show the edit form for a single event
-router.get("/edit/:id", async (req, res) => {
-    // 1) SELECT * FROM events WHERE id = ?
-    // 2) Render the edit event page
+router.get("/edit/:id", (req, res) => {
+    const eventId = req.params.id;
+    db.get("SELECT * FROM events WHERE id=?", [eventId], (err, event) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
+        }
+        res.render("organiser/editEvent", { event });
+    });
 });
 
 // POST /organiser/edit/:id
-// Save changes for an event
 router.post("/edit/:id", (req, res) => {
-    const id = req.params.id;
+    const eventId = req.params.id;
     const now = new Date().toISOString();
+
     const {
         title,
         description,
-        full_price_tix_count,
-        full_price_tix_price,
-        concession_tix_count,
-        concession_tix_price,
+        full_price_count,
+        full_price_price,
+        concession_count,
+        concession_price,
         event_date
     } = req.body;
 
     const sql = `
     UPDATE events
-       SET title=?,
-           description=?,
-           full_price_tix_count=?,
-           full_price_tix_price=?,
-           concession_tix_count=?,
-           concession_tix_price=?,
-           modified_at=?,
-           event_date=?
-     WHERE id=?`;
+      SET title=?,
+          description=?,
+          full_price_count=?,
+          full_price_price=?,
+          concession_count=?,
+          concession_price=?,
+          modified_at=?,
+          event_date=?
+      WHERE id=?
+  `;
 
-    db.run(
-        sql,
-        [
-            title,
-            description,
-            full_price_tix_count,
-            full_price_tix_price,
-            concession_tix_count,
-            concession_tix_price,
-            now,
-            event_date,
-            id
-        ],
-        (err) => {
-            if (err) {
-                console.error(err);
-            }
-            res.redirect("/organiser");
+    db.run(sql, [
+        title,
+        description,
+        full_price_count,
+        full_price_price,
+        concession_count,
+        concession_price,
+        now,
+        event_date,
+        eventId
+    ], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
         }
-    );
+        res.redirect("/organiser");
+    });
 });
 
-
 // POST /organiser/publish/:id
-// Publish an event (status -> 'published', published_at -> now)
 router.post("/publish/:id", (req, res) => {
-    const id = req.params.id;
+    const eventId = req.params.id;
     const now = new Date().toISOString();
 
     const sql = `
     UPDATE events
-       SET status='published',
-           published_at=?
-     WHERE id=?`;
-
-    db.run(sql, [now, id], (err) => {
+      SET status='published',
+          published_at=?
+      WHERE id=?
+  `;
+    db.run(sql, [now, eventId], (err) => {
         if (err) {
             console.error(err);
+            return res.status(500).send("Error publishing event");
         }
         res.redirect("/organiser");
     });
 });
 
-
 // POST /organiser/delete/:id
-// Delete event
 router.post("/delete/:id", (req, res) => {
-    const id = req.params.id;
-    db.run("DELETE FROM events WHERE id = ?", id, (err) => {
-        if (err) console.error(err);
+    const eventId = req.params.id;
+
+    db.run("DELETE FROM events WHERE id=?", [eventId], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Error deleting event");
+        }
         res.redirect("/organiser");
     });
 });
 
-
 // GET /organiser/settings
-// Show site settings form
-router.get("/settings", async (req, res) => {
-    // 1) SELECT * from siteSettings
-    // 2) Render organiserSettings.ejs
+router.get("/settings", (req, res) => {
+    db.get("SELECT * FROM siteSettings LIMIT 1", (err, siteSettings) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error");
+        }
+        res.render("organiser/settings", { siteSettings });
+    });
 });
 
 // POST /organiser/settings
-// Save site settings
-router.post("/settings", async (req, res) => {
-    // 1) UPDATE siteSettings
-    // 2) redirect to /organiser
+router.post("/settings", (req, res) => {
+    const { siteName, siteDescription } = req.body;
+
+    // You might want some minimal validation here
+    if (!siteName || !siteDescription) {
+        return res.status(400).send("All fields required");
+    }
+
+    const sql = `UPDATE siteSettings SET siteName=?, siteDescription=? WHERE id=1`;
+    db.run(sql, [siteName, siteDescription], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Error updating site settings");
+        }
+        res.redirect("/organiser");
+    });
 });
 
 module.exports = router;

@@ -1,14 +1,9 @@
-const sqlLite3 = require("sqlite3").verbose();
+// db.js
+const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
 
-const db = new sqlLite3.Database("./db.sqlite3", (err) => {
-  if (err) {
-    console.error(err.message);
-    return;
-  }
-
-  console.log("Connected to the database.");
-  global.db.run("PRAGMA foreign_keys=ON"); // tell SQLite to pay attention to foreign key constraints
-  return;
-});
+// Create or open DB in the current folder
+const dbPath = path.join(__dirname, "database.db");
+const db = new sqlite3.Database(dbPath);
 
 module.exports = db;

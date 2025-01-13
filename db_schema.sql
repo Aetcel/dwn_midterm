@@ -35,10 +35,16 @@ COMMIT;
 -- Table: siteSettings
 DROP TABLE IF EXISTS siteSettings;
 CREATE TABLE siteSettings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    siteName TEXT NOT NULL,
-    siteDescription TEXT NOT NULL
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  siteName TEXT NOT NULL,
+  siteDescription TEXT NOT NULL
 );
+
+-- Possibly other tables: events, bookings, etc.
+
+-- Optionally, insert a default row:
+INSERT INTO siteSettings (siteName, siteDescription)
+VALUES ('My Default Site', 'This is a default site description');
 
 -- Table: events
 DROP TABLE IF EXISTS events;
@@ -68,8 +74,4 @@ CREATE TABLE bookings (
     created_at TEXT NOT NULL,
     FOREIGN KEY(event_id) REFERENCES events(id)
 );
-
--- Optionally, insert a default site name and description
-INSERT INTO siteSettings (siteName, siteDescription)
-VALUES ('My Awesome Events', 'Bringing you the best events in town');
 

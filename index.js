@@ -47,8 +47,8 @@ const server = app.listen(port, () => {
 
 const express = require("express");
 const path = require("path");
-const sqlite3 = require("sqlite3").verbose();
-const db = new sqlite3.Database("database.db");
+const db = require("./core/db"); // import your db instance
+//const app = express();
 
 //cleconst app = express();
 
@@ -73,15 +73,11 @@ app.use("/attendee", attendeeRoutes);
 
 // Main Home Page route
 app.get("/", (req, res) => {
-    // This is the default homepage with links to organiser and attendee homepages
-    res.render("mainHome"); // e.g. views/mainHome.ejs
+    res.render("mainHome"); // just has links to /organiser and /attendee
 });
 
 // Start server
 const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`Listening on port ${PORT}`);
-});
-
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 // Export db if you need it across modules
 module.exports = db;

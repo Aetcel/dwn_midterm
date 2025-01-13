@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendee Home</title>
+</head>
+<body>
+<h1>Attendee Home Page</h1>
+<% if (siteSettings) { %>
+    <h2><%= siteSettings.siteName %></h2>
+    <p><%= siteSettings.siteDescription %></p>
+<% } %>
+
+<ul>
+    <% publishedEvents.forEach(ev => { %>
+        <li>
+            <a href="/attendee/event/<%= ev.id %>">
+                <%= ev.title %> - <%= ev.event_date %>
+            </a>
+        </li>
+    <% }) %>
+</ul>
+
+<a href="/">Back to Main</a>
+</body>
+</html>
