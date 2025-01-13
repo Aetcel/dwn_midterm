@@ -9,13 +9,13 @@ router.get("/", (req, res) => {
     db.get("SELECT * FROM siteSettings LIMIT 1", (err, siteSettings) => {
         if (err) {
             console.error(err);
-            return res.status(500).send("Database error");
+            return res.status(500).send("Database error: siteSettings");
         }
         const sql = `SELECT * FROM events WHERE status='published' ORDER BY event_date ASC`;
         db.all(sql, (err2, publishedEvents) => {
             if (err2) {
                 console.error(err2);
-                return res.status(500).send("Database error");
+                return res.status(500).send("Error retrieving published events");
             }
             res.render("attendee/home", { siteSettings, publishedEvents });
         });
@@ -23,14 +23,13 @@ router.get("/", (req, res) => {
 });
 
 // GET /attendee/event/:id
-// Show single event detail
+// Show single published event details + booking form
 router.get("/event/:id", (req, res) => {
     const eventId = req.params.id;
-
     db.get("SELECT * FROM events WHERE id=? AND status='published'", [eventId], (err, event) => {
         if (err) {
             console.error(err);
-            return res.status(500).send("Database error");
+            return res.status(500).send("Error retrieving event");
         }
         if (!event) {
             return res.status(404).send("Event not found or not published");
@@ -49,27 +48,27 @@ router.post("/event/:id/book", (req, res) => {
     db.get("SELECT * FROM events WHERE id=? AND status='published'", [eventId], (err, event) => {
         if (err) {
             console.error(err);
-            return res.status(500).send("Database error");
+            return res.status(500).send("Error retrieving event");
         }
         if (!event) {
-            return res.status(404).send("Event not found or not published");
+            return res.status(404).send("Event not found");
         }
 
-        // Convert to integer or 0 if blank
+        // Convert to integer
         const fpRequested = parseInt(full_price_count) || 0;
         const cRequested = parseInt(concession_count) || 0;
 
-        // Check availability
+        // Check ticket availability
         if (fpRequested > event.full_price_count || cRequested > event.concession_count) {
             return res.status(400).send("Not enough tickets available");
         }
 
         // Insert booking
-        const bookingSql = `
+        const insertSql = `
       INSERT INTO bookings (event_id, attendee_name, full_price_booked, concession_booked, created_at)
       VALUES (?, ?, ?, ?, ?)
     `;
-        db.run(bookingSql, [event.id, attendee_name, fpRequested, cRequested, now], function (err2) {
+        db.run(insertSql, [eventId, attendee_name, fpRequested, cRequested, now], function (err2) {
             if (err2) {
                 console.error(err2);
                 return res.status(500).send("Error creating booking");
@@ -78,16 +77,16 @@ router.post("/event/:id/book", (req, res) => {
             // Decrement from events table
             const updateSql = `
         UPDATE events
-          SET full_price_count=full_price_count-?,
-              concession_count=concession_count-?
-          WHERE id=?
+        SET full_price_count = full_price_count - ?,
+            concession_count = concession_count - ?
+        WHERE id=?
       `;
-            db.run(updateSql, [fpRequested, cRequested, event.id], (err3) => {
+            db.run(updateSql, [fpRequested, cRequested, eventId], (err3) => {
                 if (err3) {
                     console.error(err3);
                     return res.status(500).send("Error updating ticket counts");
                 }
-                // success
+                // All good
                 res.redirect("/attendee");
             });
         });

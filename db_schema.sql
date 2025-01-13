@@ -32,7 +32,6 @@ INSERT INTO email_accounts ('email_address', 'user_id') VALUES ('dianne@yahoo.co
 
 COMMIT;
 
--- Table: siteSettings
 DROP TABLE IF EXISTS siteSettings;
 CREATE TABLE siteSettings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,38 +39,35 @@ CREATE TABLE siteSettings (
   siteDescription TEXT NOT NULL
 );
 
--- Possibly other tables: events, bookings, etc.
+DROP TABLE IF EXISTS events;
+CREATE TABLE events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  full_price_count INTEGER NOT NULL DEFAULT 0,
+  full_price_price REAL NOT NULL DEFAULT 0.0,
+  concession_count INTEGER NOT NULL DEFAULT 0,
+  concession_price REAL NOT NULL DEFAULT 0.0,
+  created_at TEXT NOT NULL,
+  modified_at TEXT NOT NULL,
+  published_at TEXT,
+  status TEXT NOT NULL DEFAULT 'draft',
+  event_date TEXT NOT NULL
+);
 
--- Optionally, insert a default row:
+DROP TABLE IF EXISTS bookings;
+CREATE TABLE bookings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id INTEGER NOT NULL,
+  attendee_name TEXT NOT NULL,
+  full_price_booked INTEGER NOT NULL DEFAULT 0,
+  concession_booked INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(event_id) REFERENCES events(id)
+);
+
+-- Optionally insert default site settings
 INSERT INTO siteSettings (siteName, siteDescription)
 VALUES ('My Default Site', 'This is a default site description');
 
--- Table: events
-DROP TABLE IF EXISTS events;
-CREATE TABLE events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    full_price_tix_count INTEGER NOT NULL DEFAULT 0,
-    full_price_tix_price REAL NOT NULL DEFAULT 0,
-    concession_tix_count INTEGER NOT NULL DEFAULT 0,
-    concession_tix_price REAL NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    modified_at TEXT NOT NULL,
-    published_at TEXT,
-    status TEXT NOT NULL DEFAULT 'draft',
-    event_date TEXT NOT NULL
-);
-
--- Table: bookings
-DROP TABLE IF EXISTS bookings;
-CREATE TABLE bookings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    attendee_name TEXT NOT NULL,
-    full_price_tix_booked INTEGER NOT NULL DEFAULT 0,
-    concession_tix_booked INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(event_id) REFERENCES events(id)
-);
 
