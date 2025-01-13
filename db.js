@@ -2,7 +2,7 @@
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 
-// Create or open DB in the current folder
+// Create or open the database file in the project root
 const dbPath = path.join(__dirname, "database.db");
 const db = new sqlite3.Database(dbPath);
 

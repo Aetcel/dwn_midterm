@@ -1,24 +1,39 @@
 // routes/organiser.js
+
+/**
+ * Organiser routes for creating, editing, publishing, deleting events,
+ * plus site settings and the extension: viewing all bookings.
+ */
+
 const express = require("express");
 const router = express.Router();
-const db = require("../core/db"); // from db.js
+const db = require("../db");
 
-// GET /organiser
+/**
+ * GET /organiser
+ * Purpose: Display the Organiser Home Page
+ * Inputs: None
+ * Outputs: Renders the organiser/home.ejs template with siteSettings,
+ *          publishedEvents, draftEvents.
+ */
 router.get("/", (req, res) => {
+    // 1) Fetch site settings
     db.get("SELECT * FROM siteSettings LIMIT 1", (err, siteSettings) => {
         if (err) {
             console.error(err);
             return res.status(500).send("Database error: siteSettings");
         }
+        // 2) Fetch published events
         db.all("SELECT * FROM events WHERE status='published'", (err2, publishedEvents) => {
             if (err2) {
                 console.error(err2);
-                return res.status(500).send("Database error: published events");
+                return res.status(500).send("Database error: publishedEvents");
             }
+            // 3) Fetch draft events
             db.all("SELECT * FROM events WHERE status='draft'", (err3, draftEvents) => {
                 if (err3) {
                     console.error(err3);
-                    return res.status(500).send("Database error: draft events");
+                    return res.status(500).send("Database error: draftEvents");
                 }
                 res.render("organiser/home", {
                     siteSettings,
@@ -30,10 +45,15 @@ router.get("/", (req, res) => {
     });
 });
 
-// POST /organiser/create
-// Create a new draft event
+/**
+ * POST /organiser/create
+ * Purpose: Creates a new event in draft status, then redirects to its edit page.
+ * Inputs: None (uses default placeholders)
+ * Outputs: Redirect to the new event's edit page
+ */
 router.post("/create", (req, res) => {
     const now = new Date().toISOString();
+
     const sql = `
     INSERT INTO events
       (title, description, full_price_count, full_price_price,
@@ -51,7 +71,7 @@ router.post("/create", (req, res) => {
             0.0, // concession_price
             now,
             now,
-            "2025-01-01", // default date
+            "2025-01-01", // default event date
             "draft"
         ],
         function (err) {
@@ -59,12 +79,18 @@ router.post("/create", (req, res) => {
                 console.error(err);
                 return res.redirect("/organiser");
             }
+            // Redirect to edit page for the newly created event
             res.redirect(`/organiser/edit/${this.lastID}`);
         }
     );
 });
 
-// GET /organiser/edit/:id
+/**
+ * GET /organiser/edit/:id
+ * Purpose: Show the edit form for a single event
+ * Inputs: :id (event id)
+ * Outputs: Renders organiser/editEvent.ejs with event data
+ */
 router.get("/edit/:id", (req, res) => {
     const eventId = req.params.id;
     db.get("SELECT * FROM events WHERE id=?", [eventId], (err, event) => {
@@ -76,7 +102,12 @@ router.get("/edit/:id", (req, res) => {
     });
 });
 
-// POST /organiser/edit/:id
+/**
+ * POST /organiser/edit/:id
+ * Purpose: Saves changes to an event
+ * Inputs: :id (event id), plus form fields
+ * Outputs: Redirect back to /organiser
+ */
 router.post("/edit/:id", (req, res) => {
     const eventId = req.params.id;
     const now = new Date().toISOString();
@@ -93,7 +124,7 @@ router.post("/edit/:id", (req, res) => {
 
     const sql = `
     UPDATE events
-    SET
+    SET 
       title=?,
       description=?,
       full_price_count=?,
@@ -104,6 +135,7 @@ router.post("/edit/:id", (req, res) => {
       event_date=?
     WHERE id=?
   `;
+
     db.run(
         sql,
         [
@@ -127,7 +159,12 @@ router.post("/edit/:id", (req, res) => {
     );
 });
 
-// POST /organiser/publish/:id
+/**
+ * POST /organiser/publish/:id
+ * Purpose: Publishes a draft event
+ * Inputs: :id (event id)
+ * Outputs: Redirect back to /organiser
+ */
 router.post("/publish/:id", (req, res) => {
     const eventId = req.params.id;
     const now = new Date().toISOString();
@@ -147,7 +184,12 @@ router.post("/publish/:id", (req, res) => {
     });
 });
 
-// POST /organiser/delete/:id
+/**
+ * POST /organiser/delete/:id
+ * Purpose: Deletes an event
+ * Inputs: :id (event id)
+ * Outputs: Redirect back to /organiser
+ */
 router.post("/delete/:id", (req, res) => {
     const eventId = req.params.id;
     db.run("DELETE FROM events WHERE id=?", [eventId], (err) => {
@@ -159,7 +201,12 @@ router.post("/delete/:id", (req, res) => {
     });
 });
 
-// GET /organiser/settings
+/**
+ * GET /organiser/settings
+ * Purpose: Show the site settings page
+ * Inputs: None
+ * Outputs: Renders organiser/settings.ejs
+ */
 router.get("/settings", (req, res) => {
     db.get("SELECT * FROM siteSettings LIMIT 1", (err, siteSettings) => {
         if (err) {
@@ -170,12 +217,20 @@ router.get("/settings", (req, res) => {
     });
 });
 
-// POST /organiser/settings
+/**
+ * POST /organiser/settings
+ * Purpose: Update the site settings
+ * Inputs: siteName, siteDescription from form
+ * Outputs: Redirect back to /organiser
+ */
 router.post("/settings", (req, res) => {
     const { siteName, siteDescription } = req.body;
+
+    // Basic validation
     if (!siteName || !siteDescription) {
-        return res.status(400).send("All fields are required.");
+        return res.status(400).send("Both fields are required.");
     }
+
     const sql = `UPDATE siteSettings SET siteName=?, siteDescription=? WHERE id=1`;
     db.run(sql, [siteName, siteDescription], (err) => {
         if (err) {
@@ -183,6 +238,36 @@ router.post("/settings", (req, res) => {
             return res.status(500).send("Error updating site settings");
         }
         res.redirect("/organiser");
+    });
+});
+
+/**
+ * GET /organiser/bookings
+ * (EXTENSION) Purpose: Show all bookings across all events
+ * Inputs: None
+ * Outputs: Renders organiser/bookings.ejs with a list of bookings + event info
+ */
+router.get("/bookings", (req, res) => {
+    // We'll JOIN bookings with events to get event title, date, etc.
+    const sql = `
+    SELECT 
+      bookings.id as booking_id,
+      bookings.attendee_name,
+      bookings.full_price_booked,
+      bookings.concession_booked,
+      bookings.created_at as booked_at,
+      events.title as event_title,
+      events.event_date as event_date
+    FROM bookings
+    JOIN events ON bookings.event_id = events.id
+    ORDER BY bookings.created_at DESC
+  `;
+    db.all(sql, [], (err, bookings) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Error retrieving bookings");
+        }
+        res.render("organiser/bookings", { bookings });
     });
 });
 
