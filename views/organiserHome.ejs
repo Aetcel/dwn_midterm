@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><title>Organiser Home</title></head>
+<body>
+<h1>Organiser Home Page</h1>
+<h2><%= siteSettings.siteName %></h2>
+<p><%= siteSettings.siteDescription %></p>
+
+<a href="/organiser/settings">Site Settings</a> |
+<form action="/organiser/create-event" method="POST" style="display:inline;">
+    <button type="submit">Create New Event</button>
+</form>
+
+<h3>Published Events</h3>
+<ul>
+    <% publishedEvents.forEach(event => { %>
+        <li>
+            <strong>Title:</strong> <%= event.title %> <br/>
+            <strong>Date:</strong> <%= event.event_date %> <br/>
+            <strong>Created:</strong> <%= event.created_at %> <br/>
+            <strong>Published:</strong> <%= event.published_at %> <br/>
+            <!-- share link for attendee page -->
+            <a href="/attendee/event/<%= event.id %>">Share link</a>
+            <form action="/organiser/delete/<%= event.id %>" method="POST" style="display:inline;">
+                <button type="submit">Delete</button>
+            </form>
+        </li>
+    <% }) %>
+</ul>
+
+<h3>Draft Events</h3>
+<ul>
+    <% draftEvents.forEach(event => { %>
+        <li>
+            <strong>Title:</strong> <%= event.title %> <br/>
+            <strong>Created:</strong> <%= event.created_at %> <br/>
+            <a href="/organiser/edit/<%= event.id %>">Edit</a>
+            <form action="/organiser/publish/<%= event.id %>" method="POST" style="display:inline;">
+                <button type="submit">Publish</button>
+            </form>
+            <form action="/organiser/delete/<%= event.id %>" method="POST" style="display:inline;">
+                <button type="submit">Delete</button>
+            </form>
+        </li>
+    <% }) %>
+</ul>
+
+</body>
+</html>

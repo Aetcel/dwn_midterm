@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Attendee Home</title></head>
+<body>
+<h1>Attendee Home Page</h1>
+<h2><%= siteSettings.siteName %></h2>
+<p><%= siteSettings.siteDescription %></p>
+
+<ul>
+    <% publishedEvents.forEach(e => { %>
+        <li>
+            <a href="/attendee/event/<%= e.id %>"><%= e.title %> - <%= e.event_date %></a>
+        </li>
+    <% }) %>
+</ul>
+</body>
+</html>

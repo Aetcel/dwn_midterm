@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Attendee Event</title></head>
+<body>
+<h1>Attendee Event Page</h1>
+<h2><%= event.title %></h2>
+<p><%= event.description %></p>
+<p>Date: <%= event.event_date %></p>
+
+<form action="/attendee/event/<%= event.id %>/book" method="POST">
+    <label for="attendee_name">Your Name</label>
+    <input type="text" name="attendee_name" id="attendee_name" required />
+
+    <label for="full_price_count">Number of Full Price Tickets (max <%= event.full_price_tix_count %>)</label>
+    <input type="number" name="full_price_count" id="full_price_count" min="0" max="<%= event.full_price_tix_count %>" />
+
+    <label for="concession_count">Number of Concession Tickets (max <%= event.concession_tix_count %>)</label>
+    <input type="number" name="concession_count" id="concession_count" min="0" max="<%= event.concession_tix_count %>" />
+
+    <button type="submit">Book</button>
+</form>
+
+<a href="/attendee">Back</a>
+</body>
+</html>
